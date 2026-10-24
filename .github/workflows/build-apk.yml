@@ -1,0 +1,39 @@
+name: Build Telegram APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Android NDK & SDK
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r25c
+
+      - name: Configure API Keys
+        env:
+          APP_ID: ${{ secrets.TELEGRAM_APP_ID }}
+          APP_HASH: ${{ secrets.TELEGRAM_APP_HASH }}
+        run: |
+          sed -i "s/public static int APP_ID = .*/public static int APP_ID = $APP_ID;/g" TMessagesProj/src/main/java/org/telegram/messenger/BuildVars.java
+          sed -i "s/public static String APP_HASH = .*/public static String APP_HASH = \"$APP_HASH\";/g" TMessagesProj/src/main/java/org/telegram/messenger/BuildVars.java
+
+      - name: Build APK with Gradle
+        run: ./gradlew assembleAfatDebug --stacktrace
+
+      - name: Upload Finished APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Telegram-Custom-APK
+          path: TMessagesProj/build/outputs/apk/afat/debug/*.apk
